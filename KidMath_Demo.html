@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>數學魔法樂園 🌟 Math Magic Land</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Comic Sans MS", "微軟正黑體", sans-serif;
+    background: linear-gradient(135deg, #FFE5F1 0%, #E5F1FF 50%, #FFF5E5 100%);
+    min-height: 100vh;
+    color: #333;
+    overflow-x: hidden;
+  }
+
+  /* 頂部導覽列 */
+  .topbar {
+    background: linear-gradient(90deg, #FF6B9D, #FFC93C, #6BCB77, #4D96FF);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-radius: 0 0 25px 25px;
+  }
+  .logo {
+    font-size: 28px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  }
+  .player-info {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+  .badge {
+    background: white;
+    border-radius: 20px;
+    padding: 8px 18px;
+    font-weight: bold;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+  }
+  .badge:hover { transform: scale(1.05); }
+  .badge .icon { font-size: 22px; }
+  .coin { color: #FFA500; }
+  .star { color: #FF6B9D; }
+  .level { color: #4D96FF; }
+
+  /* 主要內容 */
+  .container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+  .greeting {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  .greeting h1 {
+    font-size: 36px;
+    color: #FF6B9D;
+    text-shadow: 2px 2px 0 #FFE5F1;
+  }
+  .greeting p {
+    font-size: 18px;
+    color: #666;
+    margin-top: 10px;
+  }
+  .mascot {
+    font-size: 60px;
+    display: inline-block;
+    animation: bounce 2s infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  /* 模式選擇卡 */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+  .mode-card {
+    background: white;
+    border-radius: 25px;
+    padding: 25px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    transition: all 0.3s;
+    border: 4px solid transparent;
+  }
+  .mode-card:hover {
+    transform: translateY(-8px) rotate(-1deg);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    border-color: #FFC93C;
+  }
+  .mode-card.active {
+    border-color: #FF6B9D;
+    background: linear-gradient(135deg, #FFF5F8, #FFFFFF);
+  }
+  .mode-icon {
+    font-size: 60px;
+    margin-bottom: 10px;
+  }
+  .mode-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  .mode-desc {
+    font-size: 14px;
+    color: #888;
+  }
+
+  /* 遊戲區 */
+  .game-area {
+    background: white;
+    border-radius: 30px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+    text-align: center;
+    min-height: 400px;
+    position: relative;
+    overflow: hidden;
+  }
+  .game-area::before {
+    content: "✨";
+    position: absolute;
+    top: 20px;
+    left: 30px;
+    font-size: 30px;
+    opacity: 0.3;
+  }
+  .game-area::after {
+    content: "🌈";
+    position: absolute;
+    bottom: 20px;
+    right: 30px;
+    font-size: 30px;
+    opacity: 0.3;
+  }
+  .question-box {
+    background: linear-gradient(135deg, #FFF5E5, #FFE5F1);
+    border-radius: 20px;
+    padding: 30px;
+    margin: 20px auto;
+    max-width: 500px;
+    border: 3px dashed #FF6B9D;
+  }
+  .question-text {
+    font-size: 56px;
+    font-weight: bold;
+    color: #4D96FF;
+    margin: 15px 0;
+    letter-spacing: 5px;
+  }
+  .answer-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    max-width: 500px;
+    margin: 20px auto;
+  }
+  .answer-btn {
+    background: linear-gradient(135deg, #6BCB77, #4D96FF);
+    color: white;
+    border: none;
+    padding: 20px;
+    border-radius: 18px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.15);
+  }
+  .answer-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 0 rgba(0,0,0,0.15);
+  }
+  .answer-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+  }
+  .answer-btn.correct {
+    background: linear-gradient(135deg, #6BCB77, #2E8B2E);
+    animation: correctPulse 0.5s;
+  }
+  .answer-btn.wrong {
+    background: linear-gradient(135deg, #FF6B6B, #C92A2A);
+    animation: shake 0.5s;
+  }
+  @keyframes correctPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+  }
+
+  .feedback {
+    font-size: 24px;
+    margin: 20px 0;
+    min-height: 40px;
+    font-weight: bold;
+  }
+
+  /* 進度條 */
+  .progress-section {
+    max-width: 600px;
+    margin: 20px auto;
+  }
+  .progress-bar {
+    background: #f0f0f0;
+    border-radius: 50px;
+    height: 25px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, #FFC93C, #FF6B9D, #6BCB77);
+    height: 100%;
+    transition: width 0.5s;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+    color: white;
+    font-weight: bold;
+    font-size: 13px;
+  }
+
+  /* 統計儀表板 */
+  .stats-section {
+    background: white;
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+  }
+  .stats-section h2 {
+    color: #FF6B9D;
+    margin-bottom: 20px;
+    font-size: 26px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+  }
+  .stat-card {
+    background: linear-gradient(135deg, #E5F1FF, #FFE5F1);
+    border-radius: 18px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-number {
+    font-size: 40px;
+    font-weight: bold;
+    color: #4D96FF;
+  }
+  .stat-label {
+    font-size: 14px;
+    color: #666;
+    margin-top: 5px;
+  }
+  .stat-icon { font-size: 30px; margin-bottom: 5px; }
+
+  /* 獎章區 */
+  .achievements {
+    background: white;
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+  }
+  .achievements h2 {
+    color: #FFC93C;
+    margin-bottom: 20px;
+    font-size: 26px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .badges-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .achievement-badge {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFC93C, #FF6B9D);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    box-shadow: 0 5px 15px rgba(255, 107, 157, 0.3);
+    cursor: pointer;
+    transition: transform 0.3s;
+    position: relative;
+  }
+  .achievement-badge:hover { transform: rotate(360deg) scale(1.1); }
+  .achievement-badge.locked {
+    background: #ddd;
+    box-shadow: none;
+    filter: grayscale(1);
+    opacity: 0.5;
+  }
+  .achievement-badge .tooltip {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .achievement-badge:hover .tooltip { opacity: 1; }
+
+  /* 99 乘法表 */
+  .table-section {
+    background: white;
+    border-radius: 25px;
+    padding: 30px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  }
+  .table-section h2 {
+    color: #6BCB77;
+    margin-bottom: 20px;
+    font-size: 26px;
+    text-align: center;
+  }
+  .multi-table {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 5px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .multi-cell {
+    background: linear-gradient(135deg, #E5F1FF, #FFFFFF);
+    border-radius: 8px;
+    padding: 10px 5px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .multi-cell:hover {
+    background: linear-gradient(135deg, #FFC93C, #FF6B9D);
+    color: white;
+    transform: scale(1.1);
+  }
+
+  /* 浮動慶祝 */
+  .celebration {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 100px;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 999;
+  }
+  .celebration.show {
+    animation: celebrate 1.5s ease-out;
+  }
+  @keyframes celebrate {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.5) rotate(360deg); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(2) rotate(720deg); }
+  }
+
+  /* 小考試模式 */
+  .quiz-summary {
+    background: linear-gradient(135deg, #FFF5E5, #E5F1FF);
+    border-radius: 20px;
+    padding: 30px;
+    margin: 20px auto;
+    max-width: 500px;
+    display: none;
+  }
+  .quiz-summary.show { display: block; }
+  .quiz-summary h3 { color: #FF6B9D; font-size: 28px; margin-bottom: 15px; }
+  .score-display {
+    font-size: 60px;
+    font-weight: bold;
+    color: #4D96FF;
+    margin: 15px 0;
+  }
+
+  /* 設計說明 */
+  .pros-cons {
+    background: white;
+    border-radius: 25px;
+    padding: 30px;
+    margin-top: 30px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  }
+  .pros-cons h2 {
+    color: #4D96FF;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 28px;
+  }
+  .pc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+  }
+  .pc-box {
+    padding: 20px;
+    border-radius: 18px;
+  }
+  .pros { background: linear-gradient(135deg, #E8F5E9, #F1F8E9); border-left: 5px solid #6BCB77; }
+  .cons { background: linear-gradient(135deg, #FFF3E0, #FFEBEE); border-left: 5px solid #FF6B6B; }
+  .pc-box h3 { font-size: 20px; margin-bottom: 12px; }
+  .pros h3 { color: #2E7D32; }
+  .cons h3 { color: #C62828; }
+  .pc-box ul { list-style: none; }
+  .pc-box li {
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(0,0,0,0.1);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .pc-box li:last-child { border-bottom: none; }
+  .pc-box li::before {
+    margin-right: 8px;
+    font-size: 16px;
+  }
+  .pros li::before { content: "✓"; color: #2E7D32; font-weight: bold; }
+  .cons li::before { content: "!"; color: #C62828; font-weight: bold; }
+
+  @media (max-width: 768px) {
+    .question-text { font-size: 36px; }
+    .answer-btn { font-size: 22px; padding: 15px; }
+    .pc-grid { grid-template-columns: 1fr; }
+    .multi-table { grid-template-columns: repeat(5, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🌟 數學魔法樂園</div>
+  <div class="player-info">
+    <div class="badge"><span class="icon coin">🪙</span><span id="coins">120</span></div>
+    <div class="badge"><span class="icon star">⭐</span><span id="stars">15</span></div>
+    <div class="badge"><span class="icon level">🎓</span> Lv.<span id="level">3</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="greeting">
+    <span class="mascot">🦊</span>
+    <h1>嗨！小明，準備好挑戰了嗎？</h1>
+    <p>今天已經學習了 <b style="color:#FF6B9D">8 分鐘</b>，再答對 <b style="color:#4D96FF">2 題</b> 就能升級囉！</p>
+  </div>
+
+  <div class="mode-grid">
+    <div class="mode-card active" onclick="setMode('add', this)">
+      <div class="mode-icon">➕</div>
+      <div class="mode-title">加法冒險</div>
+      <div class="mode-desc">和小狐狸一起加加看</div>
+    </div>
+    <div class="mode-card" onclick="setMode('sub', this)">
+      <div class="mode-icon">➖</div>
+      <div class="mode-title">減法森林</div>
+      <div class="mode-desc">幫小兔子分蘿蔔</div>
+    </div>
+    <div class="mode-card" onclick="setMode('mul', this)">
+      <div class="mode-icon">✖️</div>
+      <div class="mode-title">乘法城堡</div>
+      <div class="mode-desc">挑戰99乘法表</div>
+    </div>
+    <div class="mode-card" onclick="setMode('div', this)">
+      <div class="mode-icon">➗</div>
+      <div class="mode-title">除法寶藏</div>
+      <div class="mode-desc">公平分配寶物</div>
+    </div>
+    <div class="mode-card" onclick="startQuiz(this)">
+      <div class="mode-icon">🏆</div>
+      <div class="mode-title">小小考試</div>
+      <div class="mode-desc">10題挑戰拿獎章</div>
+    </div>
+  </div>
+
+  <div class="game-area">
+    <div id="modeLabel" style="font-size:18px;color:#888;margin-bottom:10px;">📚 現在練習：加法</div>
+    <div class="question-box">
+      <div style="font-size:14px;color:#888;">第 <span id="qNum">3</span> 題 / 共 10 題</div>
+      <div class="question-text" id="question">7 + 5 = ?</div>
+    </div>
+    <div class="answer-options" id="options">
+      <button class="answer-btn" onclick="answer(this, 11)">11</button>
+      <button class="answer-btn" onclick="answer(this, 12)">12</button>
+      <button class="answer-btn" onclick="answer(this, 13)">13</button>
+      <button class="answer-btn" onclick="answer(this, 10)">10</button>
+    </div>
+    <div class="feedback" id="feedback">💪 加油！你可以的！</div>
+    <div class="progress-section">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress" style="width:30%;">3/10</div>
+      </div>
+    </div>
+    <div class="quiz-summary" id="quizSummary">
+      <h3>🎉 太棒了！考試完成</h3>
+      <div class="score-display">9 / 10</div>
+      <p>獲得 🪙 50 金幣 ＋ ⭐ 3 顆星星</p>
+      <p>解鎖新獎章：「加法小達人」🏅</p>
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <h2>📊 我的學習統計</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-number">12</div>
+        <div class="stat-label">連續學習天數</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-number">348</div>
+        <div class="stat-label">累積答題數</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-number">87%</div>
+        <div class="stat-label">平均正確率</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-number">2.4</div>
+        <div class="stat-label">小時 (本週)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-number">23</div>
+        <div class="stat-label">最佳連勝</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="achievements">
+    <h2>🏅 我的獎章</h2>
+    <div class="badges-row">
+      <div class="achievement-badge">🥇<div class="tooltip">第一次滿分</div></div>
+      <div class="achievement-badge">🦊<div class="tooltip">加法小達人</div></div>
+      <div class="achievement-badge">🐰<div class="tooltip">減法高手</div></div>
+      <div class="achievement-badge">⭐<div class="tooltip">連續7天</div></div>
+      <div class="achievement-badge">🚀<div class="tooltip">100題達成</div></div>
+      <div class="achievement-badge locked">🦁<div class="tooltip">乘法王 (未解鎖)</div></div>
+      <div class="achievement-badge locked">🐉<div class="tooltip">除法神 (未解鎖)</div></div>
+      <div class="achievement-badge locked">👑<div class="tooltip">數學國王 (未解鎖)</div></div>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <h2>🎨 99 乘法表 (點擊練習)</h2>
+    <div class="multi-table" id="multiTable"></div>
+  </div>
+
+  <div class="pros-cons">
+    <h2>🎯 設計優缺點分析</h2>
+    <div class="pc-grid">
+      <div class="pc-box pros">
+        <h3>✨ 設計優點</h3>
+        <ul>
+          <li><b>視覺吸引力強</b>：彩虹色系、動物吉祥物、圓潤卡通字體，符合學齡前兒童審美</li>
+          <li><b>遊戲化機制</b>：金幣、星星、等級、獎章四種獎勵，多維度激勵孩子持續學習</li>
+          <li><b>正向回饋</b>：答對有慶祝動畫、即時讚美語，避免錯誤時的挫折感</li>
+          <li><b>分模式學習</b>：加減乘除分類，每個有專屬主題（森林/城堡/寶藏），降低認知負擔</li>
+          <li><b>家長可視化</b>：統計儀表板讓家長掌握學習時間、正確率、連續天數</li>
+          <li><b>九九乘法表互動</b>：點擊單格即可進入該數列練習，建立空間記憶</li>
+          <li><b>漸進式挑戰</b>：每題進度條讓孩子有「我快完成了」的成就感</li>
+          <li><b>大字體大按鈕</b>：適合手指操作和視力發展中的孩童</li>
+        </ul>
+      </div>
+      <div class="pc-box cons">
+        <h3>⚠️ 設計缺點與改進建議</h3>
+        <ul>
+          <li><b>過度刺激風險</b>：色彩太豐富可能讓部分孩子分心，建議加「專注模式」減色設定</li>
+          <li><b>獎勵依賴</b>：金幣/星星可能讓孩子為了獎勵而非興趣學習，建議加入內在動機元素</li>
+          <li><b>缺乏個人化</b>：所有孩子看到同樣難度，應加入 AI 自適應演算法依錯誤率調整</li>
+          <li><b>缺音效與語音</b>：學齡前孩童識字有限，需要語音朗讀題目（如「七加五等於？」）</li>
+          <li><b>四選一限制思考</b>：選擇題容易猜，應有「填空模式」訓練真正計算能力</li>
+          <li><b>無錯題回顧</b>：錯誤的題目應自動加入複習清單，間隔重複（spaced repetition）</li>
+          <li><b>螢幕時間問題</b>：需內建 20-30 分鐘休息提醒，保護視力</li>
+          <li><b>缺社交元素</b>：可加入家庭排行榜或同學 PK，但需謹慎避免比較壓力</li>
+          <li><b>單一獎勵媒介</b>：可考慮虛擬寵物養成（用金幣餵食）或解鎖角色裝扮，提升黏著度</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="celebration" id="celebration">🎉</div>
+
+<script>
+  // 模式切換
+  function setMode(mode, card) {
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    const labels = {
+      add: '📚 現在練習：加法 ➕',
+      sub: '📚 現在練習：減法 ➖',
+      mul: '📚 現在練習：乘法 ✖️',
+      div: '📚 現在練習：除法 ➗'
+    };
+    document.getElementById('modeLabel').textContent = labels[mode] || labels.add;
+    generateQuestion(mode);
+  }
+
+  // 出題
+  let currentAnswer = 12;
+  function generateQuestion(mode) {
+    let a, b, q, ans;
+    if (mode === 'add') {
+      a = Math.floor(Math.random() * 9) + 1;
+      b = Math.floor(Math.random() * 9) + 1;
+      q = `${a} + ${b} = ?`;
+      ans = a + b;
+    } else if (mode === 'sub') {
+      a = Math.floor(Math.random() * 9) + 5;
+      b = Math.floor(Math.random() * a);
+      q = `${a} - ${b} = ?`;
+      ans = a - b;
+    } else if (mode === 'mul') {
+      a = Math.floor(Math.random() * 9) + 1;
+      b = Math.floor(Math.random() * 9) + 1;
+      q = `${a} × ${b} = ?`;
+      ans = a * b;
+    } else if (mode === 'div') {
+      b = Math.floor(Math.random() * 8) + 2;
+      ans = Math.floor(Math.random() * 8) + 1;
+      a = b * ans;
+      q = `${a} ÷ ${b} = ?`;
+    }
+    currentAnswer = ans;
+    document.getElementById('question').textContent = q;
+
+    // 產生選項
+    const options = new Set([ans]);
+    while (options.size < 4) {
+      const offset = Math.floor(Math.random() * 6) - 3;
+      const opt = ans + offset;
+      if (opt >= 0 && opt !== ans) options.add(opt);
+    }
+    const shuffled = [...options].sort(() => Math.random() - 0.5);
+    const optBox = document.getElementById('options');
+    optBox.innerHTML = '';
+    shuffled.forEach(o => {
+      const btn = document.createElement('button');
+      btn.className = 'answer-btn';
+      btn.textContent = o;
+      btn.onclick = () => answer(btn, o);
+      optBox.appendChild(btn);
+    });
+    document.getElementById('feedback').textContent = '💪 加油！你可以的！';
+  }
+
+  // 回答
+  let qCount = 3;
+  let coins = 120, stars = 15;
+  function answer(btn, val) {
+    if (val === currentAnswer) {
+      btn.classList.add('correct');
+      document.getElementById('feedback').textContent = '🎉 答對了！太棒了！+10 金幣';
+      coins += 10;
+      document.getElementById('coins').textContent = coins;
+      showCelebration('🎉');
+      qCount++;
+      if (qCount > 10) qCount = 1;
+      document.getElementById('qNum').textContent = qCount;
+      const pct = qCount * 10;
+      document.getElementById('progress').style.width = pct + '%';
+      document.getElementById('progress').textContent = qCount + '/10';
+      setTimeout(() => {
+        const active = document.querySelector('.mode-card.active');
+        const mode = ['add','sub','mul','div'][[...document.querySelectorAll('.mode-card')].indexOf(active)] || 'add';
+        generateQuestion(mode);
+      }, 1200);
+    } else {
+      btn.classList.add('wrong');
+      document.getElementById('feedback').textContent = '😅 再想想看，相信你！';
+      setTimeout(() => btn.classList.remove('wrong'), 500);
+    }
+  }
+
+  function showCelebration(emoji) {
+    const el = document.getElementById('celebration');
+    el.textContent = emoji;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  // 小考試
+  function startQuiz(card) {
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    document.getElementById('modeLabel').textContent = '🏆 小小考試模式 (10題)';
+    document.getElementById('quizSummary').classList.add('show');
+    setTimeout(() => {
+      document.getElementById('quizSummary').classList.remove('show');
+      showCelebration('🏆');
+    }, 3500);
+  }
+
+  // 99 乘法表
+  const tbl = document.getElementById('multiTable');
+  for (let i = 1; i <= 9; i++) {
+    for (let j = 1; j <= 9; j++) {
+      const cell = document.createElement('div');
+      cell.className = 'multi-cell';
+      cell.innerHTML = `${i}×${j}<br><b style="color:#FF6B9D">${i*j}</b>`;
+      cell.onclick = () => {
+        showCelebration('✨');
+        document.getElementById('feedback').textContent = `🎯 來練習 ${i} 的乘法表！`;
+      };
+      tbl.appendChild(cell);
+    }
+  }
+
+  // 初始化
+  generateQuestion('add');
+</script>
+
+</body>
+</html>

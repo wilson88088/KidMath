@@ -183,6 +183,11 @@
     color: #4D96FF; font-family: inherit;
   }
   .input-answer input:focus { border-color: #FF6B9D; }
+  .input-answer input.wrong-shake {
+    border-color: #FF6B6B;
+    color: #FF6B6B;
+    animation: shake 0.5s;
+  }
   .submit-btn {
     background: linear-gradient(135deg, #FF6B9D, #FFC93C);
     color: white; border: none; padding: 18px 30px;
@@ -284,8 +289,9 @@
     box-shadow: 0 8px 20px rgba(0,0,0,0.08); margin-bottom: 25px;
   }
   .multi-table {
-    display: grid; grid-template-columns: repeat(9, 1fr);
-    gap: 5px; max-width: 700px; margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr) auto;
+    gap: 5px; max-width: 760px; margin: 0 auto;
   }
   .multi-cell {
     background: linear-gradient(135deg, #E5F1FF, #FFFFFF);
@@ -300,7 +306,27 @@
   }
   .multi-cell.highlight {
     background: linear-gradient(135deg, #6BCB77, #4D96FF);
-    color: white;
+    color: white; transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(107,203,119,0.6);
+  }
+  .row-play-btn {
+    background: linear-gradient(135deg, #FFC93C, #FF6B9D);
+    border: none; border-radius: 10px;
+    padding: 8px 10px; cursor: pointer;
+    color: white; font-weight: bold; font-size: 13px;
+    line-height: 1.2; min-width: 55px;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .row-play-btn:hover { transform: scale(1.08); }
+  .row-play-btn.playing {
+    background: linear-gradient(135deg, #6BCB77, #4D96FF);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 3px 0 rgba(0,0,0,0.15); }
+    50% { box-shadow: 0 3px 15px rgba(77,150,255,0.6); }
   }
 
   /* 錯題本 */
@@ -434,7 +460,8 @@
   @media (max-width: 768px) {
     .question-text { font-size: 40px; }
     .answer-btn { font-size: 22px; padding: 14px; }
-    .multi-table { grid-template-columns: repeat(5, 1fr); }
+    .multi-cell { font-size: 11px; padding: 6px 2px; }
+    .row-play-btn { font-size: 11px; padding: 5px 6px; min-width: 40px; }
     .stat-number { font-size: 28px; }
     .greeting h1 { font-size: 24px; }
   }
@@ -581,7 +608,7 @@
 
   <!-- 99乘法表 -->
   <div class="table-section">
-    <h2 class="section-title" style="color:#6BCB77;">🎨 99 乘法表 (點擊單格練習)</h2>
+    <h2 class="section-title" style="color:#6BCB77;">🎨 99 乘法表 (點任一格聽答案 🔊)</h2>
     <div class="multi-table" id="multiTable"></div>
   </div>
 
@@ -646,6 +673,14 @@
     <div class="toggle on" id="animToggle" onclick="toggleSetting('anim')"></div>
   </div>
   <div class="setting-row">
+    <label>📚 簡易乘法發音</label>
+    <div class="toggle" id="simpleSpeakToggle" onclick="toggleSetting('simpleSpeak')"></div>
+  </div>
+  <div style="font-size:12px;color:#888;padding:5px 10px 12px;border-bottom:1px solid #eee;line-height:1.6;">
+    開啟：「七七四十九」(傳統九九口訣)<br>
+    關閉：「七乘以七等於四十九」(完整唸法)
+  </div>
+  <div class="setting-row">
     <label>👶 改名字</label>
     <button class="icon-btn" onclick="document.getElementById('nameModal').classList.add('show')" style="background:#FFC93C;">✏️</button>
   </div>
@@ -680,7 +715,7 @@ const defaultData = {
   achievements: [],
   wrongAnswers: {}, // {"7+5":{correct:12, times:3}}
   difficulty: 'easy',
-  settings: { sound: true, speak: false, anim: true }
+  settings: { sound: true, speak: false, anim: true, simpleSpeak: false }
 };
 
 let data = loadData();
@@ -691,7 +726,10 @@ function loadData() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return Object.assign({}, defaultData, parsed);
+      const merged = Object.assign({}, defaultData, parsed);
+      // 確保 settings 裡所有鍵都存在（避免新增設定時舊使用者沒有）
+      merged.settings = Object.assign({}, defaultData.settings, parsed.settings || {});
+      return merged;
     }
   } catch(e) {}
   return JSON.parse(JSON.stringify(defaultData));
@@ -734,6 +772,8 @@ let isQuizMode = false;
 let quizCorrect = 0;
 let quizTotal = 0;
 let activeBtn = null;
+let wrongAttempts = 0;       // 當前題目答錯次數
+const MAX_WRONG_ATTEMPTS = 3; // 練習模式最多嘗試次數
 
 function getRange() {
   const r = { easy: 5, medium: 9, hard: 12 };
@@ -759,6 +799,7 @@ function generateQuestion(mode) {
   }
   currentAnswer = ans;
   currentQuestion = q;
+  wrongAttempts = 0; // 新題目重置錯誤次數
   document.getElementById('question').textContent = q + ' = ?';
 
   if (answerMode === 'choice') {
@@ -770,6 +811,8 @@ function generateQuestion(mode) {
     document.getElementById('inputBox').style.display = 'flex';
     const inp = document.getElementById('answerInput');
     inp.value = '';
+    inp.classList.remove('wrong-shake');
+    inp.disabled = false;
     inp.focus();
   }
   document.getElementById('feedback').textContent = '💪 加油！你可以的！';
@@ -800,79 +843,167 @@ function showOptions(ans) {
 
 // ===== 回答處理 =====
 function handleAnswer(btn, val) {
-  if (btn) btn.disabled = true;
-  document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
-
-  data.totalAnswered++;
   if (!data.modeCorrect) data.modeCorrect = { add:0, sub:0, mul:0, div:0 };
 
   const isCorrect = (val === currentAnswer);
+
+  // ========== 答對 ==========
   if (isCorrect) {
+    // 鎖住所有按鈕，準備進入下一題
+    document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
     if (btn) btn.classList.add('correct');
+    const inp = document.getElementById('answerInput');
+    if (inp) inp.disabled = true;
+
+    // 統計：每題只算一次
+    data.totalAnswered++;
     data.totalCorrect++;
     data.modeCorrect[currentMode]++;
-    data.currentStreak++;
-    if (data.currentStreak > data.bestStreak) data.bestStreak = data.currentStreak;
 
-    const reward = isQuizMode ? 5 : (10 + Math.floor(data.currentStreak / 5) * 2);
+    // 連勝：第一次就答對才累積，否則維持中斷狀態
+    if (wrongAttempts === 0) {
+      data.currentStreak++;
+      if (data.currentStreak > data.bestStreak) data.bestStreak = data.currentStreak;
+    }
+
+    // 獎勵：答錯過則減半，避免亂猜
+    let reward = isQuizMode ? 5 : (10 + Math.floor(data.currentStreak / 5) * 2);
+    if (wrongAttempts > 0) reward = Math.max(2, Math.floor(reward / 2));
     data.coins += reward;
-    data.xp += isQuizMode ? 10 : 5;
+    data.xp += (wrongAttempts === 0) ? (isQuizMode ? 10 : 5) : 2;
 
-    document.getElementById('feedback').innerHTML = `🎉 答對了！+${reward} 🪙`;
+    if (wrongAttempts === 0) {
+      document.getElementById('feedback').innerHTML = `🎉 答對了！+${reward} 🪙`;
+    } else {
+      document.getElementById('feedback').innerHTML = `🌟 終於答對啦！+${reward} 🪙 繼續加油！`;
+    }
     playSound('correct');
     showCelebration(['🎉','✨','🌟','🎊','🥳'][rand(0,4)]);
     flyCoin();
 
     if (isQuizMode) quizCorrect++;
-  } else {
-    if (btn) btn.classList.add('wrong');
-    data.currentStreak = 0;
-    document.getElementById('feedback').innerHTML = `😅 正確答案是 ${currentAnswer}，再試試看！`;
-    playSound('wrong');
 
-    // 加入錯題本
+    questionCount++;
+    document.getElementById('qNum').textContent = questionCount;
+    document.getElementById('streakDisplay').textContent = data.currentStreak;
+
+    // 進度
+    if (isQuizMode) {
+      quizTotal++;
+      const pct = (quizTotal / 10) * 100;
+      document.getElementById('progressBar').style.width = pct + '%';
+      document.getElementById('progressBar').textContent = `${quizTotal}/10`;
+    } else {
+      const pct = ((questionCount % 10) || 10) * 10;
+      document.getElementById('progressBar').style.width = pct + '%';
+      document.getElementById('progressBar').textContent = `${questionCount % 10 || 10}/10`;
+    }
+
+    checkLevelUp();
+    checkAchievements();
+    updateDisplay();
+    saveData();
+
+    setTimeout(() => {
+      if (isQuizMode && quizTotal >= 10) finishQuiz();
+      else generateQuestion(currentMode);
+    }, 1000);
+    return;
+  }
+
+  // ========== 答錯 ==========
+  wrongAttempts++;
+  playSound('wrong');
+
+  // 視覺回饋
+  if (btn) {
+    btn.classList.add('wrong');
+    btn.disabled = true; // 只鎖住答錯的選項，其他可繼續點
+  }
+  if (answerMode === 'input') {
+    const inp = document.getElementById('answerInput');
+    inp.classList.add('wrong-shake');
+    setTimeout(() => inp.classList.remove('wrong-shake'), 500);
+  }
+
+  // 第一次答錯才扣連勝、加入錯題本
+  if (wrongAttempts === 1) {
+    data.currentStreak = 0;
+    document.getElementById('streakDisplay').textContent = 0;
     const key = currentQuestion;
     if (!data.wrongAnswers[key]) data.wrongAnswers[key] = { correct: currentAnswer, times: 0 };
     data.wrongAnswers[key].times++;
   }
 
-  questionCount++;
-  document.getElementById('qNum').textContent = questionCount;
-  document.getElementById('streakDisplay').textContent = data.currentStreak;
-
+  // === 考試模式：一次定生死 ===
   if (isQuizMode) {
+    data.totalAnswered++;
+    document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+    document.getElementById('feedback').innerHTML = `😅 答錯了，正確答案是 <b style="color:#4D96FF">${currentAnswer}</b>`;
+    questionCount++;
+    document.getElementById('qNum').textContent = questionCount;
     quizTotal++;
     const pct = (quizTotal / 10) * 100;
     document.getElementById('progressBar').style.width = pct + '%';
     document.getElementById('progressBar').textContent = `${quizTotal}/10`;
-  } else {
+    saveData();
+    setTimeout(() => {
+      if (quizTotal >= 10) finishQuiz();
+      else generateQuestion(currentMode);
+    }, 1800);
+    return;
+  }
+
+  // === 練習模式：可以重試 ===
+  if (wrongAttempts >= MAX_WRONG_ATTEMPTS) {
+    // 三次都答錯，公布答案後進入下一題
+    data.totalAnswered++;
+    document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+    const inp = document.getElementById('answerInput');
+    if (inp) inp.disabled = true;
+    document.getElementById('feedback').innerHTML =
+      `📢 答案是 <b style="color:#4D96FF;font-size:26px;">${currentAnswer}</b>　記住囉，下一題加油！`;
+    if ('speechSynthesis' in window) {
+      speak(`答案是 ${currentAnswer}`);
+    }
+    questionCount++;
+    document.getElementById('qNum').textContent = questionCount;
     const pct = ((questionCount % 10) || 10) * 10;
     document.getElementById('progressBar').style.width = pct + '%';
     document.getElementById('progressBar').textContent = `${questionCount % 10 || 10}/10`;
+    saveData();
+    setTimeout(() => generateQuestion(currentMode), 2800);
+    return;
   }
 
-  // 升級檢查
-  checkLevelUp();
-  // 獎章檢查
-  checkAchievements();
+  // 還有機會！停留在原題目，鼓勵再試
+  const remaining = MAX_WRONG_ATTEMPTS - wrongAttempts;
+  const messages = [
+    `😅 不對喔，再想想看！還有 ${remaining} 次機會`,
+    `🤔 再仔細算一次！還有 ${remaining} 次機會`,
+    `💪 別灰心，最後 ${remaining} 次機會！`
+  ];
+  document.getElementById('feedback').innerHTML = messages[Math.min(wrongAttempts - 1, 2)];
 
-  updateDisplay();
-  saveData();
-
-  setTimeout(() => {
-    if (isQuizMode && quizTotal >= 10) {
-      finishQuiz();
-    } else {
-      generateQuestion(currentMode);
-    }
-  }, isCorrect ? 1000 : 1800);
+  // 填空題：清空輸入框、重新聚焦
+  if (answerMode === 'input') {
+    setTimeout(() => {
+      const inp = document.getElementById('answerInput');
+      inp.value = '';
+      inp.disabled = false;
+      inp.focus();
+    }, 600);
+  }
+  // 選擇題：答錯的按鈕保持紅色禁用，其他按鈕仍可點擊
 }
 
 function submitInput() {
   const inp = document.getElementById('answerInput');
+  if (inp.disabled) return;
   const val = parseInt(inp.value);
   if (isNaN(val)) {
     document.getElementById('feedback').textContent = '⚠️ 請輸入數字！';
+    inp.focus();
     return;
   }
   handleAnswer(null, val);
@@ -1018,23 +1149,138 @@ function buildMultiTable() {
     for (let j = 1; j <= 9; j++) {
       const cell = document.createElement('div');
       cell.className = 'multi-cell';
+      cell.dataset.row = i;
+      cell.dataset.col = j;
       cell.innerHTML = `${i}×${j}<br><b style="color:#FF6B9D">${i*j}</b>`;
-      cell.onclick = () => practiceTable(i);
+      cell.onclick = () => {
+        cancelRowSpeak(); // 點單格時，取消整列播放
+        speakMultiplication(i, j);
+        cell.classList.add('highlight');
+        setTimeout(() => cell.classList.remove('highlight'), 800);
+      };
       tbl.appendChild(cell);
     }
+    // 每列尾端加上「整排朗讀」按鈕
+    const btn = document.createElement('button');
+    btn.className = 'row-play-btn';
+    btn.dataset.row = i;
+    btn.innerHTML = `▶<br>${i}的`;
+    btn.title = `朗讀 ${i} 的乘法表`;
+    btn.onclick = () => playRow(i, btn);
+    tbl.appendChild(btn);
   }
 }
 
-function practiceTable(n) {
-  selectMode('mul');
-  document.getElementById('feedback').innerHTML = `🎯 來練習 ${n} 的乘法表！`;
-  // 強制出該數列的題目
-  const max = getRange();
-  const b = rand(1, max);
-  currentAnswer = n * b;
-  currentQuestion = `${n} × ${b}`;
-  document.getElementById('question').textContent = currentQuestion + ' = ?';
-  if (answerMode === 'choice') showOptions(currentAnswer);
+// 把乘法格式化成朗讀文字（依設定）
+// 重要：保持顯示順序 (a 在前, b 在後)，與畫面 a×b 一致
+// 例如「六的乘法表」→「六一得六、六二十二、…」(六永遠在前)
+function formatMultiplication(a, b) {
+  const result = a * b;
+  if (data.settings.simpleSpeak) {
+    if (result < 10) {
+      return `${numToChinese(a)} ${numToChinese(b)} 得 ${numToChinese(result)}`;
+    } else {
+      return `${numToChinese(a)} ${numToChinese(b)} ${numToChinese(result)}`;
+    }
+  } else {
+    return `${numToChinese(a)} 成以 ${numToChinese(b)} 等於 ${numToChinese(result)}`;
+  }
+}
+
+// 顯示用（給人類看，仍用「乘以」「×」），順序與發音一致
+function formatMultiplicationDisplay(a, b) {
+  const result = a * b;
+  if (data.settings.simpleSpeak) {
+    return result < 10
+      ? `${a} ${b} 得 ${result}`
+      : `${a} ${b} ${result}`;
+  }
+  return `${a} × ${b} = ${result}`;
+}
+
+// 朗讀單一乘法
+function speakMultiplication(a, b) {
+  speak(formatMultiplication(a, b));
+  document.getElementById('feedback').innerHTML =
+    `🔊 <b style="color:#6BCB77;">${formatMultiplicationDisplay(a, b)}</b>`;
+}
+
+// ===== 整列朗讀（一次唸完該列 9 個算式）=====
+let activeSpeakRow = null;
+
+function playRow(rowNum, btn) {
+  // 點同一個按鈕 → 停止
+  if (activeSpeakRow === rowNum) {
+    cancelRowSpeak();
+    return;
+  }
+  // 切換到別列 → 先停舊的，再開新的
+  cancelRowSpeak();
+  activeSpeakRow = rowNum;
+  btn.classList.add('playing');
+  btn.innerHTML = `⏸<br>${rowNum}的`;
+  document.getElementById('feedback').innerHTML =
+    `🎵 朗讀 ${rowNum} 的乘法表中…(再點一次可停止)`;
+  speakRowSequence(rowNum);
+}
+
+function cancelRowSpeak() {
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  if (activeSpeakRow !== null) {
+    document.querySelectorAll('.row-play-btn').forEach(b => {
+      const row = parseInt(b.dataset.row);
+      b.classList.remove('playing');
+      b.innerHTML = `▶<br>${row}的`;
+    });
+    document.querySelectorAll('.multi-cell.highlight').forEach(c => c.classList.remove('highlight'));
+  }
+  activeSpeakRow = null;
+}
+
+async function speakRowSequence(rowNum) {
+  for (let j = 1; j <= 9; j++) {
+    if (activeSpeakRow !== rowNum) return; // 被取消了
+    // 高亮目前唸到的格子
+    document.querySelectorAll('.multi-cell.highlight').forEach(c => c.classList.remove('highlight'));
+    const cell = document.querySelector(`.multi-cell[data-row="${rowNum}"][data-col="${j}"]`);
+    if (cell) {
+      cell.classList.add('highlight');
+      // 滾動讓使用者看到（如果在小螢幕上）
+      cell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+    await speakOnce(formatMultiplication(rowNum, j));
+    // 兩個算式之間的小停頓
+    await new Promise(r => setTimeout(r, 250));
+  }
+  // 全部唸完
+  if (activeSpeakRow === rowNum) {
+    document.getElementById('feedback').innerHTML =
+      `✅ ${rowNum} 的乘法表唸完囉！`;
+  }
+  cancelRowSpeak();
+}
+
+// 單次朗讀（回傳 Promise，等到唸完才 resolve）
+function speakOnce(text) {
+  return new Promise(resolve => {
+    if (!('speechSynthesis' in window)) { resolve(); return; }
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-TW';
+      if (!preferredVoice) preferredVoice = pickBestVoice();
+      if (preferredVoice) u.voice = preferredVoice;
+      u.rate = 0.95;
+      u.pitch = 1.1;
+      u.volume = 1;
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      u.onend = finish;
+      u.onerror = finish;
+      // 保險：5 秒沒回應就強制下一句
+      setTimeout(finish, 5000);
+      speechSynthesis.speak(u);
+    } catch(e) { resolve(); }
+  });
 }
 
 // ===== 錯題本 =====
@@ -1155,11 +1401,38 @@ function playSound(type) {
   } catch(e) {}
 }
 
+// 嘗試挑選最佳中文語音（避開多音字問題的引擎）
+let preferredVoice = null;
+function pickBestVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  // 優先順序：台灣中文 > 香港中文 > 大陸中文 > 任何中文
+  const priorities = [
+    v => v.lang === 'zh-TW' && /Hsiao|Yating|HanHan|Online/i.test(v.name),
+    v => v.lang === 'zh-TW',
+    v => v.lang === 'zh-HK',
+    v => v.lang === 'zh-CN',
+    v => /^zh/i.test(v.lang)
+  ];
+  for (const test of priorities) {
+    const v = voices.find(test);
+    if (v) return v;
+  }
+  return null;
+}
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => { preferredVoice = pickBestVoice(); };
+  preferredVoice = pickBestVoice();
+}
+
 function speak(text, opts = {}) {
   if (!('speechSynthesis' in window)) return;
   try {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'zh-TW';
+    if (!preferredVoice) preferredVoice = pickBestVoice();
+    if (preferredVoice) u.voice = preferredVoice;
     u.rate = opts.rate || 0.95;
     u.pitch = opts.pitch || 1.1;
     u.volume = 1;
@@ -1168,13 +1441,34 @@ function speak(text, opts = {}) {
   } catch(e) { console.warn('語音失敗', e); }
 }
 
+// 數字念讀字典（避免某些 TTS 把單獨數字唸成英文 "one, two..."）
+const numWords = ['零','一','二','三','四','五','六','七','八','九'];
+function numToChinese(n) {
+  if (n < 0) return '負' + numToChinese(-n);
+  if (n < 10) return numWords[n];
+  if (n < 20) return n === 10 ? '十' : '十' + numWords[n - 10];
+  if (n < 100) {
+    const t = Math.floor(n / 10);
+    const o = n % 10;
+    return numWords[t] + '十' + (o ? numWords[o] : '');
+  }
+  return String(n); // 100+ 交給 TTS 處理
+}
+
 function speakQuestion() {
-  const q = currentQuestion
-    .replace('+', ' 加 ')
-    .replace('-', ' 減 ')
-    .replace('×', ' 乘 ')
-    .replace('÷', ' 除以 ');
-  speak(q + ' 等於多少？');
+  // 「乘」是多音字 (chéng/shèng)，TTS 容易讀錯成「勝」
+  // 採用「諧音替代法」：用「成」字（只有 chéng 一音）取代「乘」
+  // 這是強制鎖定發音最可靠的方式，因為 TTS 不會做語意判斷
+  // 把所有數字也轉成中文字，避免某些引擎讀英文數字
+  let spoken = currentQuestion;
+  // 把純數字轉成中文（讓朗讀更自然，且避免「1, 2, 3」變英文）
+  spoken = spoken.replace(/\d+/g, m => numToChinese(parseInt(m)));
+  spoken = spoken
+    .replace(/\+/g, ' 加 ')
+    .replace(/-/g, ' 減 ')
+    .replace(/×/g, ' 成以 ')   // 用「成」(chéng) 鎖定發音，TTS 只會唸這一種
+    .replace(/÷/g, ' 除以 ');
+  speak(spoken + ' 等於多少？');
 }
 
 // 打招呼（叫名字）
@@ -1282,8 +1576,9 @@ setInterval(() => {
 
 // ===== 設定切換初始狀態 =====
 function applySettings() {
-  ['sound', 'speak', 'anim'].forEach(k => {
+  ['sound', 'speak', 'anim', 'simpleSpeak'].forEach(k => {
     const el = document.getElementById(k + 'Toggle');
+    if (!el) return;
     if (data.settings[k]) el.classList.add('on');
     else el.classList.remove('on');
   });

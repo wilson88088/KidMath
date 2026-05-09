@@ -457,8 +457,10 @@
 
   <!-- 歡迎 -->
   <div class="greeting">
-    <span class="mascot" id="mascotEmoji">🦊</span>
-    <h1>嗨！<span id="userName">小朋友</span>，準備好挑戰了嗎？</h1>
+    <span class="mascot" id="mascotEmoji" onclick="greetUser()" title="點我打招呼">🦊</span>
+    <h1>嗨！<span id="userName">小朋友</span>，準備好挑戰了嗎？
+      <button class="icon-btn" onclick="greetUser()" title="再聽一次" style="vertical-align:middle;width:36px;height:36px;font-size:18px;">🔊</button>
+    </h1>
     <p id="greetingMsg">選擇下面的模式開始學習吧！</p>
   </div>
 
@@ -1096,6 +1098,11 @@ function saveName() {
     updateDisplay();
     document.getElementById('nameModal').classList.remove('show');
     showCelebration('🎉');
+    // 因為這是使用者點擊觸發，瀏覽器允許播放
+    greetedAfterInteraction = true;
+    setTimeout(() => {
+      speak(`${name}！歡迎來到數學魔法樂園！我們一起變強吧！`);
+    }, 300);
   }
 }
 
@@ -1148,18 +1155,87 @@ function playSound(type) {
   } catch(e) {}
 }
 
-function speakQuestion() {
+function speak(text, opts = {}) {
   if (!('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-TW';
+    u.rate = opts.rate || 0.95;
+    u.pitch = opts.pitch || 1.1;
+    u.volume = 1;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch(e) { console.warn('語音失敗', e); }
+}
+
+function speakQuestion() {
   const q = currentQuestion
     .replace('+', ' 加 ')
     .replace('-', ' 減 ')
     .replace('×', ' 乘 ')
     .replace('÷', ' 除以 ');
-  const u = new SpeechSynthesisUtterance(q + ' 等於多少？');
-  u.lang = 'zh-TW';
-  u.rate = 0.9;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
+  speak(q + ' 等於多少？');
+}
+
+// 打招呼（叫名字）
+function greetUser() {
+  const name = data.name || '小朋友';
+  const hour = new Date().getHours();
+  let timeGreet = '你好';
+  if (hour < 11) timeGreet = '早安';
+  else if (hour < 14) timeGreet = '午安';
+  else if (hour < 18) timeGreet = '下午好';
+  else timeGreet = '晚安';
+
+  const phrases = [
+    `${timeGreet}！${name}，歡迎回到數學魔法樂園！準備好挑戰了嗎？`,
+    `嗨！${name}！今天也要一起學數學喔！`,
+    `${name}，你回來啦！我好想你呢！`,
+    `${timeGreet}，${name}！讓我們一起變成數學小天才吧！`
+  ];
+  const msg = phrases[Math.floor(Math.random() * phrases.length)];
+  speak(msg);
+}
+
+// 嘗試在頁面載入時打招呼（可能被瀏覽器擋）
+function tryGreetOnLoad() {
+  if (!data.name) return;
+  // 瀏覽器通常需要使用者互動才能播放聲音
+  // 嘗試直接播放，若失敗則等待第一次點擊
+  setTimeout(() => {
+    try {
+      greetUser();
+      // 檢查是否真的有播放
+      setTimeout(() => {
+        if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+          // 沒播放成功，等待使用者互動
+          setupGreetOnInteraction();
+        }
+      }, 500);
+    } catch(e) {
+      setupGreetOnInteraction();
+    }
+  }, 500);
+}
+
+let greetedAfterInteraction = false;
+function setupGreetOnInteraction() {
+  if (greetedAfterInteraction) return;
+  const handler = () => {
+    if (greetedAfterInteraction) return;
+    greetedAfterInteraction = true;
+    greetUser();
+    document.removeEventListener('click', handler);
+    document.removeEventListener('keydown', handler);
+    document.removeEventListener('touchstart', handler);
+  };
+  document.addEventListener('click', handler, { once: false });
+  document.addEventListener('keydown', handler, { once: false });
+  document.addEventListener('touchstart', handler, { once: false });
+
+  // 顯示提示
+  const tip = document.getElementById('greetingMsg');
+  if (tip) tip.innerHTML = '👆 <b style="color:#FF6B9D">點任意位置，我來叫你的名字！</b>';
 }
 
 // ===== 設定 =====
@@ -1222,6 +1298,9 @@ function init() {
   updateDisplay();
   if (!data.name) {
     document.getElementById('nameModal').classList.add('show');
+  } else {
+    // 已有名字，嘗試打招呼
+    tryGreetOnLoad();
   }
   // 設定難度按鈕
   document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
